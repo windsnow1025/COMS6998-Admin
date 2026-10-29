@@ -21,11 +21,13 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import {AdminPhotoPageResDto} from '@/client/nest';
 import AdminClient from '@/lib/admin/AdminClient';
+import {useBase} from './AdminBase';
 import {formatDate, formatInstant, truncate} from '@/lib/admin/Format';
 import {HoverSx} from './HoverSx';
 import {useToast} from './Toast';
 
 const RowsPerPage = 20;
+const SearchDelayMs = 300;
 
 function SeedDialog({open, onClose, onStored}: {
   open: boolean;
@@ -89,12 +91,26 @@ function SeedDialog({open, onClose, onStored}: {
 
 export default function PhotosView() {
   const router = useRouter();
+  const base = useBase();
   const toast = useToast();
   const [page, setPage] = React.useState(0);
   const [query, setQuery] = React.useState('');
   const [search, setSearch] = React.useState('');
   const [result, setResult] = React.useState<AdminPhotoPageResDto | null>(null);
   const [seedOpen, setSeedOpen] = React.useState(false);
+
+  // The search follows the typing after a pause; Enter applies it at once
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const term = query.trim();
+      if (term !== search) {
+        setPage(0);
+        setSearch(term);
+      }
+    }, SearchDelayMs);
+    return () => clearTimeout(timer);
+  }, [query, search]);
+
 
   React.useEffect(() => {
     let active = true;
@@ -180,7 +196,7 @@ export default function PhotosView() {
                   key={photo.id}
                   hover
                   sx={{cursor: 'pointer'}}
-                  onClick={() => router.push(`/photos/${photo.id}`)}
+                  onClick={() => router.push(`${base}/photos/${photo.id}`)}
                 >
                   <TableCell sx={{width: 72}}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -233,7 +249,7 @@ export default function PhotosView() {
       <SeedDialog
         open={seedOpen}
         onClose={() => setSeedOpen(false)}
-        onStored={(photoId) => router.push(`/photos/${photoId}`)}
+        onStored={(photoId) => router.push(`${base}/photos/${photoId}`)}
       />
     </Box>
   );

@@ -8,6 +8,7 @@ import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
@@ -19,100 +20,17 @@ import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import {
-  AdminCaptionResDto,
-  AdminLlmCallResDto,
-  AdminPhotoDetailResDto,
-} from '@/client/nest';
+import {AdminCaptionResDto, AdminPhotoDetailResDto} from '@/client/nest';
 import AdminClient from '@/lib/admin/AdminClient';
 import {formatDate, formatInstant} from '@/lib/admin/Format';
 import ConfirmDialog from './ConfirmDialog';
+import {useBase} from './AdminBase';
 import {HoverSx} from './HoverSx';
+import LlmCallDialog from './LlmCallDialog';
 import {useToast} from './Toast';
 
-// A photo's captions carry 3 voices once generation has finished
+// Generation leaves a seed photo with 3 captions and an upload with 5 drafts; fewer means it did not finish
 const FullCaptionCount = 3;
-
-function LlmCallDialog({callId, onClose}: { callId: string | null; onClose: () => void }) {
-  const toast = useToast();
-  const [loaded, setLoaded] = React.useState<AdminLlmCallResDto | null>(null);
-  // The loaded call is kept across a close; it shows only while it is the open one
-  const call = loaded && loaded.id === callId ? loaded : null;
-
-  React.useEffect(() => {
-    if (!callId) {
-      return;
-    }
-    let active = true;
-    const load = async () => {
-      const adminClient = new AdminClient();
-      try {
-        const fetched = await adminClient.fetchLlmCall(callId);
-        if (active) {
-          setLoaded(fetched);
-        }
-      } catch (error) {
-        toast.show((error as Error).message, 'error');
-        onClose();
-      }
-    };
-    load();
-    return () => {
-      active = false;
-    };
-    // toast is stable; onClose only closes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [callId]);
-
-  return (
-    <Dialog open={callId !== null} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>LLM call</DialogTitle>
-      <DialogContent>
-        {!call ? (
-          <Box className="flex-center" sx={{minHeight: 160}}>
-            <CircularProgress/>
-          </Box>
-        ) : (
-          <Box className="flex-column" sx={{gap: 2}}>
-            <Box className="flex-normal" sx={{gap: 1}}>
-              <Chip size="small" label={call.step}/>
-              <Chip size="small" label={call.model}/>
-              <Chip size="small" label={`${call.inputTokens} in / ${call.outputTokens} out`}/>
-              <Chip size="small" label={`${(call.durationMs / 1000).toFixed(1)}s`}/>
-              <Chip size="small" label={formatInstant(call.createdAt)}/>
-            </Box>
-            {([
-              ['System prompt', call.systemPrompt],
-              ['User prompt', call.userPrompt],
-              ['Response', call.response],
-            ] as const).map(([label, text]) => (
-              <Box key={label}>
-                <Typography variant="subtitle2" gutterBottom>{label}</Typography>
-                <Typography
-                  variant="body2"
-                  component="pre"
-                  sx={{
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    fontFamily: 'inherit',
-                    bgcolor: 'action.hover',
-                    borderRadius: 1,
-                    p: 1.5,
-                    m: 0,
-                    maxHeight: 240,
-                    overflow: 'auto',
-                  }}
-                >
-                  {text}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function CaptionCard({caption, onChanged}: {
   caption: AdminCaptionResDto;
@@ -123,6 +41,9 @@ function CaptionCard({caption, onChanged}: {
   const [draft, setDraft] = React.useState(caption.content);
   const [deleting, setDeleting] = React.useState(false);
   const [callId, setCallId] = React.useState<string | null>(null);
+  const hasVotes = caption.picks + caption.downs > 0;
+  // A vote lands on a kept caption only; an unkept draft shows counts only where a vote landed before the uploader dropped it
+  const showCounts = caption.kept || hasVotes;
 
   const save = async () => {
     const adminClient = new AdminClient();
@@ -149,12 +70,16 @@ function CaptionCard({caption, onChanged}: {
   };
 
   return (
-    <Card variant="outlined" sx={{...HoverSx, p: 2}}>
+    <Card variant="outlined" sx={{...HoverSx, p: 2, borderStyle: caption.kept ? 'solid' : 'dashed'}}>
       <Box className="flex-between" sx={{gap: 1, mb: 1}}>
         <Box className="flex-normal" sx={{gap: 1}}>
           <Chip size="small" color="primary" variant="outlined" label={caption.flavor?.name ?? 'no voice'}/>
-          <Chip size="small" label={`${caption.picks} picks`}/>
-          <Chip size="small" label={`${caption.downs} downs`}/>
+          {showCounts && (
+            <>
+              <Chip size="small" label={`${caption.picks} picks`}/>
+              <Chip size="small" label={`${caption.downs} downs`}/>
+            </>
+          )}
         </Box>
         <Box className="flex-normal" sx={{gap: 0.5}}>
           {caption.llmCallId && (
@@ -203,7 +128,9 @@ function CaptionCard({caption, onChanged}: {
       <ConfirmDialog
         open={deleting}
         title="Delete this caption?"
-        body="Its votes go with it. A deleted caption cannot be restored."
+        body={hasVotes
+          ? 'Its votes go with it. A deleted caption cannot be restored.'
+          : 'A deleted caption cannot be restored.'}
         confirmLabel="Delete"
         onConfirm={remove}
         onClose={() => setDeleting(false)}
@@ -213,12 +140,18 @@ function CaptionCard({caption, onChanged}: {
   );
 }
 
-export default function PhotoDetailView({id}: { id: string }) {
+// `editable` gives the page the "Edit details" dialog, a Week 7 ability
+export default function PhotoDetailView({id, editable}: { id: string; editable: boolean }) {
   const router = useRouter();
+  const base = useBase();
   const toast = useToast();
   const [photo, setPhoto] = React.useState<AdminPhotoDetailResDto | null>(null);
   const [deleting, setDeleting] = React.useState(false);
   const [writing, setWriting] = React.useState(false);
+  const [editingPhoto, setEditingPhoto] = React.useState(false);
+  const [draftDescription, setDraftDescription] = React.useState('');
+  const [draftPlace, setDraftPlace] = React.useState('');
+  const [savingPhoto, setSavingPhoto] = React.useState(false);
   const [generation, setGeneration] = React.useState(0);
   const reload = () => setGeneration((count) => count + 1);
 
@@ -256,11 +189,31 @@ export default function PhotoDetailView({id}: { id: string }) {
     try {
       await adminClient.deletePhoto(photo.id);
       toast.show('Photo deleted.', 'success');
-      router.replace('/photos');
+      router.replace(`${base}/photos`);
     } catch (error) {
       toast.show((error as Error).message, 'error');
       setDeleting(false);
     }
+  };
+
+  const openEdit = () => {
+    setDraftDescription(photo.description);
+    setDraftPlace(photo.place ?? '');
+    setEditingPhoto(true);
+  };
+
+  const savePhoto = async () => {
+    setSavingPhoto(true);
+    const adminClient = new AdminClient();
+    try {
+      const updated = await adminClient.updatePhoto(photo.id, {description: draftDescription, place: draftPlace});
+      setPhoto(updated);
+      toast.show('Photo updated.', 'success');
+      setEditingPhoto(false);
+    } catch (error) {
+      toast.show((error as Error).message, 'error');
+    }
+    setSavingPhoto(false);
   };
 
   const writeCaptions = async () => {
@@ -275,6 +228,9 @@ export default function PhotoDetailView({id}: { id: string }) {
     }
     setWriting(false);
   };
+
+  const kept = photo.captions.filter((caption) => caption.kept);
+  const unkept = photo.captions.filter((caption) => !caption.kept);
 
   return (
     <Box className="flex-start-start" sx={{gap: 3}}>
@@ -298,7 +254,12 @@ export default function PhotoDetailView({id}: { id: string }) {
                 ))
               )}
             </Box>
-            <Box className="flex-end-center">
+            <Box className="flex-end-center" sx={{gap: 1}}>
+              {editable && (
+                <Button startIcon={<EditRoundedIcon/>} onClick={openEdit}>
+                  Edit details
+                </Button>
+              )}
               <Button
                 color="error"
                 startIcon={<DeleteRoundedIcon/>}
@@ -359,7 +320,7 @@ export default function PhotoDetailView({id}: { id: string }) {
             </Button>
           )}
         </Box>
-        {photo.captions.map((caption) => (
+        {kept.map((caption) => (
           <CaptionCard key={caption.id} caption={caption} onChanged={reload}/>
         ))}
         {photo.captions.length === 0 && (
@@ -367,7 +328,53 @@ export default function PhotoDetailView({id}: { id: string }) {
             No captions. The generation failed or was never run; write them from here.
           </Typography>
         )}
+        {kept.length === 0 && unkept.length > 0 && (
+          <Typography variant="body2" color="text.secondary">
+            None kept yet.
+          </Typography>
+        )}
+        {unkept.length > 0 && (
+          <>
+            <Typography variant="subtitle2" color="text.secondary">
+              Not kept
+            </Typography>
+            {unkept.map((caption) => (
+              <CaptionCard key={caption.id} caption={caption} onChanged={reload}/>
+            ))}
+          </>
+        )}
       </Box>
+
+      <Dialog open={editingPhoto} onClose={() => setEditingPhoto(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Edit photo details</DialogTitle>
+        <DialogContent>
+          <Box className="flex-column" sx={{gap: 2, pt: 1}}>
+            <TextField
+              label="Description"
+              value={draftDescription}
+              onChange={(event) => setDraftDescription(event.target.value)}
+              multiline
+              minRows={4}
+              fullWidth
+              required
+              slotProps={{htmlInput: {maxLength: 4000}}}
+            />
+            <TextField
+              label="Place"
+              value={draftPlace}
+              onChange={(event) => setDraftPlace(event.target.value)}
+              fullWidth
+              slotProps={{htmlInput: {maxLength: 80}}}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditingPhoto(false)}>Cancel</Button>
+          <Button variant="contained" onClick={savePhoto} disabled={savingPhoto || !draftDescription.trim()}>
+            {savingPhoto ? 'Saving…' : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <ConfirmDialog
         open={deleting}

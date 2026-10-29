@@ -1,10 +1,11 @@
-import AdminShell from '@/components/admin/AdminShell';
-import OverviewView from '@/components/admin/OverviewView';
+import {GetServerSideProps} from 'next';
+import {LatestWeek} from '@/components/admin/Weeks';
 
-export default function OverviewPage() {
-  return (
-    <AdminShell title="Overview">
-      <OverviewView/>
-    </AdminShell>
-  );
+// The root is the latest week's admin
+export const getServerSideProps: GetServerSideProps = async () => ({
+  redirect: {destination: LatestWeek.base, permanent: false},
+});
+
+export default function RootPage() {
+  return null;
 }
