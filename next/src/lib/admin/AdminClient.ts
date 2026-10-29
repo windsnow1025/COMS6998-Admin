@@ -1,5 +1,6 @@
 import {getNestOpenAPIConfiguration} from "@/lib/common/APIConfig";
 import {
+  AdminAccessPolicyResDto,
   AdminApi,
   AdminAvailableModelResDto,
   AdminCaptionResDto,
@@ -239,6 +240,18 @@ export default class AdminClient {
   }
 
   // Who may sign up
+
+  async fetchAccessPolicy(): Promise<AdminAccessPolicyResDto> {
+    const api = new AdminConfigApi(getNestOpenAPIConfiguration());
+    const res = await api.adminConfigControllerFindAccessPolicy();
+    return res.data;
+  }
+
+  async updateAccessPolicy(restricted: boolean): Promise<AdminAccessPolicyResDto> {
+    const api = new AdminConfigApi(getNestOpenAPIConfiguration());
+    const res = await api.adminConfigControllerUpdateAccessPolicy({restricted});
+    return res.data;
+  }
 
   async fetchDomains(): Promise<AdminDomainResDto[]> {
     const api = new AdminConfigApi(getNestOpenAPIConfiguration());
