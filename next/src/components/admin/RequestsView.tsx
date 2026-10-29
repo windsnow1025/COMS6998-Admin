@@ -22,6 +22,7 @@ import LlmCallDialog from './LlmCallDialog';
 import {useToast} from './Toast';
 
 const PageSize = 20;
+const SearchDelayMs = 300;
 
 type StepFilter = 'all' | AdminConfigControllerFindLlmCallsStepEnum;
 
@@ -34,6 +35,19 @@ export default function RequestsView() {
   const [step, setStep] = React.useState<StepFilter>('all');
   const [draft, setDraft] = React.useState('');
   const [q, setQ] = React.useState('');
+
+  // The search follows the typing after a pause; Enter applies it at once
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const term = draft.trim();
+      if (term !== q) {
+        setPageIndex(0);
+        setQ(term);
+      }
+    }, SearchDelayMs);
+    return () => clearTimeout(timer);
+  }, [draft, q]);
+
   const [callId, setCallId] = React.useState<string | null>(null);
 
   React.useEffect(() => {

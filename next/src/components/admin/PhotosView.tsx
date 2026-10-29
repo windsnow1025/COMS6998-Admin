@@ -27,6 +27,7 @@ import {HoverSx} from './HoverSx';
 import {useToast} from './Toast';
 
 const RowsPerPage = 20;
+const SearchDelayMs = 300;
 
 function SeedDialog({open, onClose, onStored}: {
   open: boolean;
@@ -97,6 +98,19 @@ export default function PhotosView() {
   const [search, setSearch] = React.useState('');
   const [result, setResult] = React.useState<AdminPhotoPageResDto | null>(null);
   const [seedOpen, setSeedOpen] = React.useState(false);
+
+  // The search follows the typing after a pause; Enter applies it at once
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const term = query.trim();
+      if (term !== search) {
+        setPage(0);
+        setSearch(term);
+      }
+    }, SearchDelayMs);
+    return () => clearTimeout(timer);
+  }, [query, search]);
+
 
   React.useEffect(() => {
     let active = true;
