@@ -30,7 +30,7 @@ import ConfirmDialog from './ConfirmDialog';
 import {HoverSx} from './HoverSx';
 import {useToast} from './Toast';
 
-// A photo's captions carry 3 voices once generation has finished
+// Generation leaves a seed photo with 3 captions and an upload with 5 drafts; fewer means it did not finish
 const FullCaptionCount = 3;
 
 function LlmCallDialog({callId, onClose}: { callId: string | null; onClose: () => void }) {
@@ -123,6 +123,9 @@ function CaptionCard({caption, onChanged}: {
   const [draft, setDraft] = React.useState(caption.content);
   const [deleting, setDeleting] = React.useState(false);
   const [callId, setCallId] = React.useState<string | null>(null);
+  const hasVotes = caption.picks + caption.downs > 0;
+  // A vote lands on a kept caption only; an unkept draft shows counts only where a vote landed before the uploader dropped it
+  const showCounts = caption.kept || hasVotes;
 
   const save = async () => {
     const adminClient = new AdminClient();
@@ -149,12 +152,16 @@ function CaptionCard({caption, onChanged}: {
   };
 
   return (
-    <Card variant="outlined" sx={{...HoverSx, p: 2}}>
+    <Card variant="outlined" sx={{...HoverSx, p: 2, borderStyle: caption.kept ? 'solid' : 'dashed'}}>
       <Box className="flex-between" sx={{gap: 1, mb: 1}}>
         <Box className="flex-normal" sx={{gap: 1}}>
           <Chip size="small" color="primary" variant="outlined" label={caption.flavor?.name ?? 'no voice'}/>
-          <Chip size="small" label={`${caption.picks} picks`}/>
-          <Chip size="small" label={`${caption.downs} downs`}/>
+          {showCounts && (
+            <>
+              <Chip size="small" label={`${caption.picks} picks`}/>
+              <Chip size="small" label={`${caption.downs} downs`}/>
+            </>
+          )}
         </Box>
         <Box className="flex-normal" sx={{gap: 0.5}}>
           {caption.llmCallId && (
@@ -203,7 +210,9 @@ function CaptionCard({caption, onChanged}: {
       <ConfirmDialog
         open={deleting}
         title="Delete this caption?"
-        body="Its votes go with it. A deleted caption cannot be restored."
+        body={hasVotes
+          ? 'Its votes go with it. A deleted caption cannot be restored.'
+          : 'A deleted caption cannot be restored.'}
         confirmLabel="Delete"
         onConfirm={remove}
         onClose={() => setDeleting(false)}
@@ -275,6 +284,9 @@ export default function PhotoDetailView({id}: { id: string }) {
     }
     setWriting(false);
   };
+
+  const kept = photo.captions.filter((caption) => caption.kept);
+  const unkept = photo.captions.filter((caption) => !caption.kept);
 
   return (
     <Box className="flex-start-start" sx={{gap: 3}}>
@@ -359,13 +371,28 @@ export default function PhotoDetailView({id}: { id: string }) {
             </Button>
           )}
         </Box>
-        {photo.captions.map((caption) => (
+        {kept.map((caption) => (
           <CaptionCard key={caption.id} caption={caption} onChanged={reload}/>
         ))}
         {photo.captions.length === 0 && (
           <Typography variant="body2" color="text.secondary">
             No captions. The generation failed or was never run; write them from here.
           </Typography>
+        )}
+        {kept.length === 0 && unkept.length > 0 && (
+          <Typography variant="body2" color="text.secondary">
+            None kept yet.
+          </Typography>
+        )}
+        {unkept.length > 0 && (
+          <>
+            <Typography variant="subtitle2" color="text.secondary">
+              Not kept
+            </Typography>
+            {unkept.map((caption) => (
+              <CaptionCard key={caption.id} caption={caption} onChanged={reload}/>
+            ))}
+          </>
         )}
       </Box>
 
