@@ -60,6 +60,8 @@ interface CrudViewProps<T> {
   // The field values of a row, for the edit dialog
   toValues: (row: T) => CrudValues;
   load: () => Promise<T[]>;
+  // Told the rows after every load, for a caller whose own state depends on them
+  onLoaded?: (rows: T[]) => void;
   create: (values: CrudValues) => Promise<unknown>;
   update: (row: T, values: CrudValues) => Promise<unknown>;
   remove: (row: T) => Promise<unknown>;
@@ -75,7 +77,7 @@ function emptyValues(fields: CrudField[]): CrudValues {
 
 // A table of one kind of row with add, edit, and delete; the dialog's fields come from `fields`
 export default function CrudView<T>(props: CrudViewProps<T>) {
-  const {title, description, columns, fields, rowKey, toValues, load, create, update, remove, noun, emptyText, deleteBody} = props;
+  const {title, description, columns, fields, rowKey, toValues, load, onLoaded, create, update, remove, noun, emptyText, deleteBody} = props;
   const toast = useToast();
   const [rows, setRows] = React.useState<T[] | null>(null);
   const [generation, setGeneration] = React.useState(0);
@@ -92,6 +94,7 @@ export default function CrudView<T>(props: CrudViewProps<T>) {
         const loaded = await load();
         if (active) {
           setRows(loaded);
+          onLoaded?.(loaded);
         }
       } catch (error) {
         toast.show((error as Error).message, 'error');
@@ -101,7 +104,7 @@ export default function CrudView<T>(props: CrudViewProps<T>) {
     return () => {
       active = false;
     };
-    // toast is stable; load is given once
+    // toast is stable; load and onLoaded are given once
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generation]);
 
