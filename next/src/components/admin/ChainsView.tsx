@@ -54,7 +54,7 @@ function StepCard({index, step, voice}: {
     <Card variant="outlined" sx={{...HoverSx, p: 2}}>
       <Box className="flex-normal" sx={{gap: 1, mb: 1.5}}>
         <Chip size="small" color="primary" variant="outlined" label={`Step ${index + 1}: ${step.step}`}/>
-        <Chip size="small" label={`${step.provider} · ${step.model}`}/>
+        <Chip size="small" label={`${step.apiType} · ${step.model}`}/>
         <Chip size="small" label={`temperature ${step.temperature}`}/>
       </Box>
       <Box className="flex-column" sx={{gap: 1.5}}>

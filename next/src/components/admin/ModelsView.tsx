@@ -62,7 +62,7 @@ function StepRow({step, models, onSaved}: {
         >
           {models.map((model) => (
             <MenuItem key={model.id} value={model.id} disabled={!model.enabled}>
-              {model.provider} · {model.name}
+              {model.apiType} · {model.name}
             </MenuItem>
           ))}
         </TextField>
@@ -173,25 +173,23 @@ export default function ModelsView() {
         emptyText="No provider."
         deleteBody="Its models go with it. A provider with a model a step runs on cannot be deleted."
         columns={[
-          {key: 'name', label: 'Name', render: (row) => row.name},
           {key: 'apiType', label: 'API type', render: (row) => row.apiType},
           {key: 'enabled', label: 'Enabled', render: (row) => (row.enabled ? 'Yes' : 'No')},
           {key: 'models', label: 'Models', align: 'right', render: (row) => row.models},
         ]}
         fields={[
-          {key: 'name', label: 'Name', type: 'text', required: true, maxLength: 64},
           {key: 'apiType', label: 'API type', type: 'select', required: true, createOnly: true, options: apiTypes.map((apiType) => ({value: apiType, label: apiType}))},
           {key: 'enabled', label: 'Enabled', type: 'switch'},
         ]}
         rowKey={(row) => row.id}
-        toValues={(row) => ({name: row.name, apiType: row.apiType, enabled: row.enabled})}
+        toValues={(row) => ({apiType: row.apiType, enabled: row.enabled})}
         load={() => adminClient.fetchProviders()}
         create={async (values) => {
-          await adminClient.createProvider({name: String(values.name), apiType: String(values.apiType), enabled: values.enabled === true});
+          await adminClient.createProvider({apiType: String(values.apiType), enabled: values.enabled === true});
           reload();
         }}
         update={async (row, values) => {
-          await adminClient.updateProvider(row.id, {name: String(values.name), apiType: String(values.apiType), enabled: values.enabled === true});
+          await adminClient.updateProvider(row.id, {enabled: values.enabled === true});
           reload();
         }}
         remove={async (row) => {
@@ -207,7 +205,7 @@ export default function ModelsView() {
         emptyText="No model."
         deleteBody="A model a step runs on cannot be deleted."
         columns={[
-          {key: 'provider', label: 'Provider', render: (row) => row.provider},
+          {key: 'provider', label: 'Provider', render: (row) => row.apiType},
           {key: 'name', label: 'Model', render: (row) => row.name},
           {key: 'enabled', label: 'Enabled', render: (row) => (row.enabled ? 'Yes' : 'No')},
           {
@@ -227,7 +225,7 @@ export default function ModelsView() {
             type: 'select',
             required: true,
             createOnly: true,
-            options: providers.map((provider) => ({value: provider.id, label: provider.name})),
+            options: providers.map((provider) => ({value: provider.id, label: provider.apiType})),
           },
           {
             key: 'name',
