@@ -12,7 +12,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import {AdminModelResDto, AdminPipelineStepResDto, AdminProviderResDto} from '@/client/nest';
+import {AdminAvailableModelResDto, AdminModelResDto, AdminPipelineStepResDto, AdminProviderResDto} from '@/client/nest';
 import AdminClient from '@/lib/admin/AdminClient';
 import CrudView from './CrudView';
 import {HoverSx} from './HoverSx';
@@ -95,6 +95,7 @@ export default function ModelsView() {
   const [steps, setSteps] = React.useState<AdminPipelineStepResDto[] | null>(null);
   const [models, setModels] = React.useState<AdminModelResDto[] | null>(null);
   const [providers, setProviders] = React.useState<AdminProviderResDto[]>([]);
+  const [available, setAvailable] = React.useState<AdminAvailableModelResDto[]>([]);
   const [generation, setGeneration] = React.useState(0);
   const reload = () => setGeneration((count) => count + 1);
 
@@ -103,15 +104,17 @@ export default function ModelsView() {
     const load = async () => {
       const adminClient = new AdminClient();
       try {
-        const [fetchedSteps, fetchedModels, fetchedProviders] = await Promise.all([
+        const [fetchedSteps, fetchedModels, fetchedProviders, fetchedAvailable] = await Promise.all([
           adminClient.fetchSteps(),
           adminClient.fetchModels(),
           adminClient.fetchProviders(),
+          adminClient.fetchAvailableModels(),
         ]);
         if (active) {
           setSteps(fetchedSteps);
           setModels(fetchedModels);
           setProviders(fetchedProviders);
+          setAvailable(fetchedAvailable);
         }
       } catch (error) {
         toast.show((error as Error).message, 'error');
@@ -126,6 +129,9 @@ export default function ModelsView() {
   }, [generation]);
 
   const adminClient = new AdminClient();
+  // The API types FastAPI's model list names, and the models of one of them
+  const apiTypes = [...new Set(available.map((row) => row.apiType))].sort();
+  const modelsOf = (apiType: string) => available.filter((row) => row.apiType === apiType).map((row) => ({value: row.model, label: row.model}));
 
   return (
     <Box className="flex-column" sx={{gap: 3}}>
@@ -174,7 +180,7 @@ export default function ModelsView() {
         ]}
         fields={[
           {key: 'name', label: 'Name', type: 'text', required: true, maxLength: 64},
-          {key: 'apiType', label: 'API type', type: 'text', required: true, maxLength: 64, helper: 'For example OpenAI or Google AI Studio'},
+          {key: 'apiType', label: 'API type', type: 'select', required: true, createOnly: true, options: apiTypes.map((apiType) => ({value: apiType, label: apiType}))},
           {key: 'enabled', label: 'Enabled', type: 'switch'},
         ]}
         rowKey={(row) => row.id}
@@ -223,7 +229,13 @@ export default function ModelsView() {
             createOnly: true,
             options: providers.map((provider) => ({value: provider.id, label: provider.name})),
           },
-          {key: 'name', label: 'Model', type: 'text', required: true, maxLength: 64},
+          {
+            key: 'name',
+            label: 'Model',
+            type: 'select',
+            required: true,
+            options: (values) => modelsOf(providers.find((provider) => provider.id === values.providerId)?.apiType ?? ''),
+          },
           {key: 'enabled', label: 'Enabled', type: 'switch'},
         ]}
         rowKey={(row) => row.id}

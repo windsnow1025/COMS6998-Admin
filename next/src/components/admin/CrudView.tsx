@@ -28,6 +28,8 @@ import {useToast} from './Toast';
 
 export type CrudValues = Record<string, string | boolean>;
 
+export type CrudOptions = { value: string; label: string }[];
+
 export interface CrudColumn<T> {
   key: string;
   label: string;
@@ -39,7 +41,8 @@ export interface CrudField {
   key: string;
   label: string;
   type: 'text' | 'textarea' | 'select' | 'switch';
-  options?: { value: string; label: string }[];
+  // The choices of a select, or a function of the dialog's current values where they depend on another field
+  options?: CrudOptions | ((values: CrudValues) => CrudOptions);
   required?: boolean;
   maxLength?: number;
   helper?: string;
@@ -242,7 +245,7 @@ export default function CrudView<T>(props: CrudViewProps<T>) {
                   fullWidth
                   slotProps={{htmlInput: {maxLength: field.maxLength}}}
                 >
-                  {field.type === 'select' && field.options?.map((option) => (
+                  {field.type === 'select' && (typeof field.options === 'function' ? field.options(values) : field.options)?.map((option) => (
                     <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
                   ))}
                 </TextField>

@@ -1,6 +1,7 @@
 import {getNestOpenAPIConfiguration} from "@/lib/common/APIConfig";
 import {
   AdminApi,
+  AdminAvailableModelResDto,
   AdminCaptionResDto,
   AdminChainResDto,
   AdminConfigApi,
@@ -125,6 +126,12 @@ export default class AdminClient {
   async updateStep(step: string, body: AdminStepReqDto): Promise<AdminPipelineStepResDto> {
     const api = new AdminConfigApi(getNestOpenAPIConfiguration());
     const res = await api.adminConfigControllerUpdateStep(step, body);
+    return res.data;
+  }
+
+  async fetchAvailableModels(): Promise<AdminAvailableModelResDto[]> {
+    const api = new AdminConfigApi(getNestOpenAPIConfiguration());
+    const res = await api.adminConfigControllerFindAvailableModels();
     return res.data;
   }
 
