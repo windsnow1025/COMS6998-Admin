@@ -23,6 +23,12 @@ const Sections = [
   {label: 'Photos', href: '/photos'},
   {label: 'Users', href: '/users'},
   {label: 'Votes', href: '/votes'},
+  {label: 'Chains', href: '/chains'},
+  {label: 'Models', href: '/models'},
+  {label: 'Terms', href: '/terms'},
+  {label: 'Examples', href: '/examples'},
+  {label: 'Requests', href: '/requests'},
+  {label: 'Access', href: '/access'},
 ];
 
 function sectionOf(pathname: string): string {
