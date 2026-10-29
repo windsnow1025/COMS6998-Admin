@@ -87,6 +87,7 @@ export default function DayChart({days}: { days: AdminDayResDto[] }) {
                 key={day.date}
                 className="day"
                 onMouseEnter={() => setHovered(index)}
+                onMouseLeave={() => setHovered(null)}
               >
                 <rect
                   className="band"
