@@ -15,30 +15,20 @@ import LocalFireDepartmentRoundedIcon from '@mui/icons-material/LocalFireDepartm
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import ColorModeIconDropdown from '@/components/common/shared-theme/ColorModeIconDropdown';
 import {StorageKeys} from '@/lib/common/Constants';
+import {BaseContext} from './AdminBase';
 import AdminGate, {ViewerContext} from './AdminGate';
 import {ToastProvider} from './Toast';
+import {AdminWeek} from './Weeks';
 
-const Sections = [
-  {label: 'Overview', href: '/'},
-  {label: 'Photos', href: '/photos'},
-  {label: 'Users', href: '/users'},
-  {label: 'Votes', href: '/votes'},
-  {label: 'Chains', href: '/chains'},
-  {label: 'Models', href: '/models'},
-  {label: 'Terms', href: '/terms'},
-  {label: 'Examples', href: '/examples'},
-  {label: 'Requests', href: '/requests'},
-  {label: 'Access', href: '/access'},
-];
-
-function sectionOf(pathname: string): string {
-  const section = Sections.find(
-    ({href}) => href !== '/' && pathname.startsWith(href),
+// The href of the week's section the page is in; the week's home for any other page of the week
+function sectionOf(pathname: string, week: AdminWeek): string {
+  const section = week.sections.find(
+    ({path}) => path !== '' && pathname.startsWith(`${week.base}${path}`),
   );
-  return section?.href ?? '/';
+  return `${week.base}${section?.path ?? ''}`;
 }
 
-function Header() {
+function Header({week}: { week: AdminWeek }) {
   const router = useRouter();
   const viewer = React.useContext(ViewerContext);
 
@@ -52,15 +42,16 @@ function Header() {
           </Typography>
         </Box>
         <Tabs
-          value={sectionOf(router.pathname)}
+          value={sectionOf(router.pathname, week)}
           // The shared theme floats each tab 8px above its indicator, which reads
           // off-center inside a toolbar
           sx={{flexGrow: 1, '& .MuiTab-root': {marginBottom: 0}}}
           variant="scrollable"
         >
-          {Sections.map(({label, href}) => (
-            <Tab key={href} label={label} value={href} href={href} component={Link}/>
-          ))}
+          {week.sections.map(({label, path}) => {
+            const href = `${week.base}${path}`;
+            return <Tab key={href} label={label} value={href} href={href} component={Link}/>;
+          })}
         </Tabs>
         <Typography variant="body2" color="text.secondary" sx={{display: {xs: 'none', sm: 'block'}}}>
           {viewer?.username}
@@ -82,8 +73,9 @@ function Header() {
   );
 }
 
-// The frame of every admin page: the sign-in and role gate, the header, and the toast
-export default function AdminShell({title, children}: {
+// The frame of every admin page: the sign-in and role gate, the header with the week's tabs, and the toast
+export default function AdminShell({week, title, children}: {
+  week: AdminWeek;
   title: string;
   children: React.ReactNode;
 }) {
@@ -96,10 +88,12 @@ export default function AdminShell({title, children}: {
       <ToastProvider>
         <AdminGate>
           <Box className="local-scroll-container">
-            <Header/>
+            <Header week={week}/>
             <Box className="local-scroll-scrollable">
               <Container maxWidth="lg" sx={{py: 3}}>
-                {children}
+                <BaseContext.Provider value={week.base}>
+                  {children}
+                </BaseContext.Provider>
               </Container>
             </Box>
           </Box>

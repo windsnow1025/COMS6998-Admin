@@ -1,9 +1,10 @@
 import AdminShell from '@/components/admin/AdminShell';
+import {Week7} from '@/components/admin/Weeks';
 import ChainsView from '@/components/admin/ChainsView';
 
-export default function ChainsPage() {
+export default function Week7ChainsPage() {
   return (
-    <AdminShell title="Chains">
+    <AdminShell week={Week7} title="Chains">
       <ChainsView/>
     </AdminShell>
   );

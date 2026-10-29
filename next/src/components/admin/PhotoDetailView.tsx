@@ -24,6 +24,7 @@ import {AdminCaptionResDto, AdminPhotoDetailResDto} from '@/client/nest';
 import AdminClient from '@/lib/admin/AdminClient';
 import {formatDate, formatInstant} from '@/lib/admin/Format';
 import ConfirmDialog from './ConfirmDialog';
+import {useBase} from './AdminBase';
 import {HoverSx} from './HoverSx';
 import LlmCallDialog from './LlmCallDialog';
 import {useToast} from './Toast';
@@ -139,8 +140,10 @@ function CaptionCard({caption, onChanged}: {
   );
 }
 
-export default function PhotoDetailView({id}: { id: string }) {
+// `editable` gives the page the "Edit details" dialog, a Week 7 ability
+export default function PhotoDetailView({id, editable}: { id: string; editable: boolean }) {
   const router = useRouter();
+  const base = useBase();
   const toast = useToast();
   const [photo, setPhoto] = React.useState<AdminPhotoDetailResDto | null>(null);
   const [deleting, setDeleting] = React.useState(false);
@@ -186,7 +189,7 @@ export default function PhotoDetailView({id}: { id: string }) {
     try {
       await adminClient.deletePhoto(photo.id);
       toast.show('Photo deleted.', 'success');
-      router.replace('/photos');
+      router.replace(`${base}/photos`);
     } catch (error) {
       toast.show((error as Error).message, 'error');
       setDeleting(false);
@@ -252,9 +255,11 @@ export default function PhotoDetailView({id}: { id: string }) {
               )}
             </Box>
             <Box className="flex-end-center" sx={{gap: 1}}>
-              <Button startIcon={<EditRoundedIcon/>} onClick={openEdit}>
-                Edit details
-              </Button>
+              {editable && (
+                <Button startIcon={<EditRoundedIcon/>} onClick={openEdit}>
+                  Edit details
+                </Button>
+              )}
               <Button
                 color="error"
                 startIcon={<DeleteRoundedIcon/>}

@@ -17,6 +17,7 @@ import {AdminConfigControllerFindLlmCallsStepEnum, AdminLlmCallPageResDto} from 
 import AdminClient from '@/lib/admin/AdminClient';
 import {formatInstant} from '@/lib/admin/Format';
 import {HoverSx} from './HoverSx';
+import {useBase} from './AdminBase';
 import LlmCallDialog from './LlmCallDialog';
 import {useToast} from './Toast';
 
@@ -27,6 +28,7 @@ type StepFilter = 'all' | AdminConfigControllerFindLlmCallsStepEnum;
 // Every request to the LLM, newest first, with its response; a row opens the prompts and the response
 export default function RequestsView() {
   const toast = useToast();
+  const base = useBase();
   const [page, setPage] = React.useState<AdminLlmCallPageResDto | null>(null);
   const [pageIndex, setPageIndex] = React.useState(0);
   const [step, setStep] = React.useState<StepFilter>('all');
@@ -122,7 +124,7 @@ export default function RequestsView() {
                   <TableCell sx={{whiteSpace: 'nowrap'}}>{call.model}</TableCell>
                   <TableCell>{call.username ?? 'seed'}</TableCell>
                   <TableCell>
-                    <Link href={`/photos/${call.imageId}`} onClick={(event) => event.stopPropagation()}>
+                    <Link href={`${base}/photos/${call.imageId}`} onClick={(event) => event.stopPropagation()}>
                       <Box sx={{width: 48, height: 36, borderRadius: 1, bgcolor: 'action.hover', overflow: 'hidden'}}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={call.imageUrl} alt="" style={{width: '100%', height: '100%', objectFit: 'cover', display: 'block'}}/>

@@ -13,6 +13,7 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import {AdminVotePageResDto} from '@/client/nest';
 import AdminClient from '@/lib/admin/AdminClient';
+import {useBase} from './AdminBase';
 import {formatInstant, truncate} from '@/lib/admin/Format';
 import {HoverSx} from './HoverSx';
 import {useToast} from './Toast';
@@ -21,6 +22,7 @@ const RowsPerPage = 25;
 
 export default function VotesView() {
   const toast = useToast();
+  const base = useBase();
   const [page, setPage] = React.useState(0);
   const [result, setResult] = React.useState<AdminVotePageResDto | null>(null);
 
@@ -79,7 +81,7 @@ export default function VotesView() {
               </TableCell>
               <TableCell>{truncate(vote.captionContent, 80)}</TableCell>
               <TableCell>
-                <Link href={`/photos/${vote.imageId}`}>
+                <Link href={`${base}/photos/${vote.imageId}`}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={vote.imageUrl}
