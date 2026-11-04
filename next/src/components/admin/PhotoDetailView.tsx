@@ -28,6 +28,7 @@ import {useBase} from './AdminBase';
 import {HoverSx} from './HoverSx';
 import LlmCallDialog from './LlmCallDialog';
 import {useToast} from './Toast';
+import VoiceName from './VoiceName';
 
 // Generation leaves a seed photo with 3 captions and an upload with 5 drafts; fewer means it did not finish
 const FullCaptionCount = 3;
@@ -73,7 +74,9 @@ function CaptionCard({caption, onChanged}: {
     <Card variant="outlined" sx={{...HoverSx, p: 2, borderStyle: caption.kept ? 'solid' : 'dashed'}}>
       <Box className="flex-between" sx={{gap: 1, mb: 1}}>
         <Box className="flex-normal" sx={{gap: 1}}>
-          <Chip size="small" color="primary" variant="outlined" label={caption.flavor?.name ?? 'no voice'}/>
+          {caption.flavor
+            ? <VoiceName name={caption.flavor.name} color={caption.flavor.color}/>
+            : <Typography variant="body2" color="text.secondary">no voice</Typography>}
           {showCounts && (
             <>
               <Chip size="small" label={`${caption.picks} picks`}/>

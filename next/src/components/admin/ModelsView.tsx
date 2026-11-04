@@ -12,33 +12,35 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import {AdminAvailableModelResDto, AdminModelResDto, AdminPipelineStepResDto, AdminProviderResDto} from '@/client/nest';
+import {AdminAvailableModelResDto, AdminModelResDto, AdminProviderResDto, AdminScreeningResDto} from '@/client/nest';
 import AdminClient from '@/lib/admin/AdminClient';
 import CrudView from './CrudView';
 import {HoverSx} from './HoverSx';
 import {useToast} from './Toast';
+import VoiceName from './VoiceName';
 
 const MaxTemperature = 2;
 
-function StepRow({step, models, onSaved}: {
-  step: AdminPipelineStepResDto;
+// The screening's model and temperature, saved together
+function ScreeningRow({screening, models, onSaved}: {
+  screening: AdminScreeningResDto;
   models: AdminModelResDto[];
   onSaved: () => void;
 }) {
   const toast = useToast();
-  const [modelId, setModelId] = React.useState(step.modelId);
-  const [temperature, setTemperature] = React.useState(String(step.temperature));
+  const [modelId, setModelId] = React.useState(screening.modelId);
+  const [temperature, setTemperature] = React.useState(String(screening.temperature));
   const [saving, setSaving] = React.useState(false);
   const parsed = Number(temperature);
   const valid = temperature.trim() !== '' && Number.isFinite(parsed) && parsed >= 0 && parsed <= MaxTemperature;
-  const changed = modelId !== step.modelId || parsed !== step.temperature;
+  const changed = modelId !== screening.modelId || parsed !== screening.temperature;
 
   const save = async () => {
     setSaving(true);
     const adminClient = new AdminClient();
     try {
-      await adminClient.updateStep(step.step, {modelId, temperature: parsed});
-      toast.show(`Step "${step.step}" updated.`, 'success');
+      await adminClient.updateScreening({modelId, temperature: parsed});
+      toast.show('Screening updated.', 'success');
       onSaved();
     } catch (error) {
       toast.show((error as Error).message, 'error');
@@ -49,7 +51,7 @@ function StepRow({step, models, onSaved}: {
   return (
     <TableRow>
       <TableCell>
-        <Chip size="small" color="primary" variant="outlined" label={step.step}/>
+        <Chip size="small" color="primary" variant="outlined" label={screening.step}/>
       </TableCell>
       <TableCell>
         <TextField
@@ -58,10 +60,10 @@ function StepRow({step, models, onSaved}: {
           value={modelId}
           onChange={(event) => setModelId(event.target.value)}
           sx={{minWidth: 260}}
-          slotProps={{htmlInput: {'aria-label': `Model of the ${step.step} step`}}}
+          slotProps={{htmlInput: {'aria-label': 'Model of the screening'}}}
         >
           {models.map((model) => (
-            <MenuItem key={model.id} value={model.id} disabled={!model.enabled}>
+            <MenuItem key={model.id} value={model.id} disabled={!model.enabled || !model.providerEnabled}>
               {model.apiType} · {model.name}
             </MenuItem>
           ))}
@@ -75,7 +77,7 @@ function StepRow({step, models, onSaved}: {
           onChange={(event) => setTemperature(event.target.value)}
           error={!valid}
           sx={{width: 110}}
-          slotProps={{htmlInput: {min: 0, max: MaxTemperature, step: 0.1, 'aria-label': `Temperature of the ${step.step} step`}}}
+          slotProps={{htmlInput: {min: 0, max: MaxTemperature, step: 0.1, 'aria-label': 'Temperature of the screening'}}}
         />
       </TableCell>
       <TableCell align="right">
@@ -89,10 +91,10 @@ function StepRow({step, models, onSaved}: {
   );
 }
 
-// The pipeline's 2 steps with the model and the temperature each runs on, and the providers and models they can be set to
+// The screening with the model and the temperature it runs on, and the providers and models a step can be set to
 export default function ModelsView() {
   const toast = useToast();
-  const [steps, setSteps] = React.useState<AdminPipelineStepResDto[] | null>(null);
+  const [screening, setScreening] = React.useState<AdminScreeningResDto | null>(null);
   const [models, setModels] = React.useState<AdminModelResDto[] | null>(null);
   const [providers, setProviders] = React.useState<AdminProviderResDto[]>([]);
   const [available, setAvailable] = React.useState<AdminAvailableModelResDto[]>([]);
@@ -104,14 +106,14 @@ export default function ModelsView() {
     const load = async () => {
       const adminClient = new AdminClient();
       try {
-        const [fetchedSteps, fetchedModels, fetchedProviders, fetchedAvailable] = await Promise.all([
-          adminClient.fetchSteps(),
+        const [fetchedScreening, fetchedModels, fetchedProviders, fetchedAvailable] = await Promise.all([
+          adminClient.fetchScreening(),
           adminClient.fetchModels(),
           adminClient.fetchProviders(),
           adminClient.fetchAvailableModels(),
         ]);
         if (active) {
-          setSteps(fetchedSteps);
+          setScreening(fetchedScreening);
           setModels(fetchedModels);
           setProviders(fetchedProviders);
           setAvailable(fetchedAvailable);
@@ -137,12 +139,12 @@ export default function ModelsView() {
     <Box className="flex-column" sx={{gap: 3}}>
       <Card variant="outlined" sx={HoverSx}>
         <Box sx={{p: 2, pb: 1}}>
-          <Typography variant="subtitle1">Pipeline steps</Typography>
+          <Typography variant="subtitle1">Screening</Typography>
           <Typography variant="body2" color="text.secondary">
-            The model and the temperature each step runs on. A change applies to the next photo.
+            The model and the temperature the screening runs on. A change applies to the next photo.
           </Typography>
         </Box>
-        {!steps || !models ? (
+        {!screening || !models ? (
           <Box className="flex-center" sx={{minHeight: 120}}>
             <CircularProgress/>
           </Box>
@@ -157,9 +159,7 @@ export default function ModelsView() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {steps.map((step) => (
-                <StepRow key={`${step.step}-${generation}`} step={step} models={models} onSaved={reload}/>
-              ))}
+              <ScreeningRow key={generation} screening={screening} models={models} onSaved={reload}/>
             </TableBody>
           </Table>
         )}
@@ -212,8 +212,13 @@ export default function ModelsView() {
             key: 'steps',
             label: 'Steps',
             render: (row) => (
-              <Box className="flex-normal" sx={{gap: 0.5}}>
-                {row.steps.map((step) => <Chip key={step} size="small" color="primary" variant="outlined" label={step}/>)}
+              <Box className="flex-normal" sx={{gap: 1.5}}>
+                {row.steps.map((entry) => (
+                  <Box key={`${entry.flavor?.slug ?? ''}:${entry.step}`} className="flex-normal" sx={{gap: 0.75}}>
+                    {entry.flavor && <VoiceName name={entry.flavor.name} color={entry.flavor.color}/>}
+                    <Chip size="small" color="primary" variant="outlined" label={entry.step}/>
+                  </Box>
+                ))}
               </Box>
             ),
           },

@@ -13,18 +13,19 @@ import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import {AdminConfigControllerFindLlmCallsStepEnum, AdminLlmCallPageResDto} from '@/client/nest';
+import {AdminLlmCallPageResDto} from '@/client/nest';
 import AdminClient from '@/lib/admin/AdminClient';
 import {formatInstant} from '@/lib/admin/Format';
 import {HoverSx} from './HoverSx';
 import {useBase} from './AdminBase';
 import LlmCallDialog from './LlmCallDialog';
 import {useToast} from './Toast';
+import VoiceName from './VoiceName';
 
 const PageSize = 20;
 const SearchDelayMs = 300;
-
-type StepFilter = 'all' | AdminConfigControllerFindLlmCallsStepEnum;
+// The filter's value for every step
+const AllSteps = 'all';
 
 // Every request to the LLM, newest first, with its response; a row opens the prompts and the response
 export default function RequestsView() {
@@ -32,7 +33,9 @@ export default function RequestsView() {
   const base = useBase();
   const [page, setPage] = React.useState<AdminLlmCallPageResDto | null>(null);
   const [pageIndex, setPageIndex] = React.useState(0);
-  const [step, setStep] = React.useState<StepFilter>('all');
+  const [step, setStep] = React.useState(AllSteps);
+  // The screening and the chains' step names requests were made for
+  const [steps, setSteps] = React.useState<string[]>([]);
   const [draft, setDraft] = React.useState('');
   const [q, setQ] = React.useState('');
 
@@ -53,9 +56,29 @@ export default function RequestsView() {
   React.useEffect(() => {
     let active = true;
     const load = async () => {
+      try {
+        const fetched = await new AdminClient().fetchLlmCallSteps();
+        if (active) {
+          setSteps(fetched);
+        }
+      } catch (error) {
+        toast.show((error as Error).message, 'error');
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+    // toast is stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  React.useEffect(() => {
+    let active = true;
+    const load = async () => {
       const adminClient = new AdminClient();
       try {
-        const fetched = await adminClient.fetchLlmCalls(PageSize, pageIndex * PageSize, step === 'all' ? undefined : step, q || undefined);
+        const fetched = await adminClient.fetchLlmCalls(PageSize, pageIndex * PageSize, step === AllSteps ? undefined : step, q || undefined);
         if (active) {
           setPage(fetched);
         }
@@ -81,15 +104,16 @@ export default function RequestsView() {
             size="small"
             value={step}
             onChange={(event) => {
-              setStep(event.target.value as StepFilter);
+              setStep(event.target.value);
               setPageIndex(0);
             }}
             sx={{minWidth: 140}}
             slotProps={{htmlInput: {'aria-label': 'Step'}}}
           >
-            <MenuItem value="all">All steps</MenuItem>
-            <MenuItem value={AdminConfigControllerFindLlmCallsStepEnum.Describe}>describe</MenuItem>
-            <MenuItem value={AdminConfigControllerFindLlmCallsStepEnum.Caption}>caption</MenuItem>
+            <MenuItem value={AllSteps}>All steps</MenuItem>
+            {steps.map((name) => (
+              <MenuItem key={name} value={name}>{name}</MenuItem>
+            ))}
           </TextField>
           <TextField
             size="small"
@@ -117,6 +141,7 @@ export default function RequestsView() {
               <TableRow>
                 <TableCell>When</TableCell>
                 <TableCell>Step</TableCell>
+                <TableCell>Voice</TableCell>
                 <TableCell>Model</TableCell>
                 <TableCell>User</TableCell>
                 <TableCell>Photo</TableCell>
@@ -135,6 +160,7 @@ export default function RequestsView() {
                 >
                   <TableCell sx={{whiteSpace: 'nowrap'}}>{formatInstant(call.createdAt)}</TableCell>
                   <TableCell><Chip size="small" color="primary" variant="outlined" label={call.step}/></TableCell>
+                  <TableCell>{call.flavor && <VoiceName name={call.flavor.name} color={call.flavor.color}/>}</TableCell>
                   <TableCell sx={{whiteSpace: 'nowrap'}}>{call.model}</TableCell>
                   <TableCell>{call.username ?? 'seed'}</TableCell>
                   <TableCell>
@@ -154,7 +180,7 @@ export default function RequestsView() {
               ))}
               {page.calls.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8}>
+                  <TableCell colSpan={9}>
                     <Typography variant="body2" color="text.secondary">No call matches.</Typography>
                   </TableCell>
                 </TableRow>

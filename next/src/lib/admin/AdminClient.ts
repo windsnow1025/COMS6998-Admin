@@ -4,9 +4,7 @@ import {
   AdminApi,
   AdminAvailableModelResDto,
   AdminCaptionResDto,
-  AdminChainResDto,
   AdminConfigApi,
-  AdminConfigControllerFindLlmCallsStepEnum,
   AdminDomainResDto,
   AdminEmailResDto,
   AdminExampleReqDto,
@@ -20,15 +18,16 @@ import {
   AdminPhotoDetailResDto,
   AdminPhotoPageResDto,
   AdminPhotoReqDto,
-  AdminPipelineStepResDto,
   AdminProviderReqDto,
   AdminProviderResDto,
   AdminProviderUpdateReqDto,
-  AdminStepReqDto,
+  AdminScreeningReqDto,
+  AdminScreeningResDto,
   AdminTermReqDto,
   AdminTermResDto,
   AdminUserResDto,
   AdminVotePageResDto,
+  ChainResDto,
   ImagesApi,
   PhotoResDto,
 } from "@/client/nest";
@@ -106,27 +105,27 @@ export default class AdminClient {
 
   // The prompt chain and what feeds it
 
-  async fetchChains(): Promise<AdminChainResDto[]> {
+  async fetchChains(): Promise<ChainResDto[]> {
     const api = new AdminConfigApi(getNestOpenAPIConfiguration());
     const res = await api.adminConfigControllerFindChains();
     return res.data;
   }
 
-  async updateChain(slug: string, inMix: boolean): Promise<AdminChainResDto> {
+  async updateChain(slug: string, inMix: boolean): Promise<ChainResDto> {
     const api = new AdminConfigApi(getNestOpenAPIConfiguration());
     const res = await api.adminConfigControllerUpdateChain(slug, {inMix});
     return res.data;
   }
 
-  async fetchSteps(): Promise<AdminPipelineStepResDto[]> {
+  async fetchScreening(): Promise<AdminScreeningResDto> {
     const api = new AdminConfigApi(getNestOpenAPIConfiguration());
-    const res = await api.adminConfigControllerFindSteps();
+    const res = await api.adminConfigControllerFindScreening();
     return res.data;
   }
 
-  async updateStep(step: string, body: AdminStepReqDto): Promise<AdminPipelineStepResDto> {
+  async updateScreening(body: AdminScreeningReqDto): Promise<AdminScreeningResDto> {
     const api = new AdminConfigApi(getNestOpenAPIConfiguration());
-    const res = await api.adminConfigControllerUpdateStep(step, body);
+    const res = await api.adminConfigControllerUpdateScreening(body);
     return res.data;
   }
 
@@ -231,11 +230,17 @@ export default class AdminClient {
   async fetchLlmCalls(
     limit: number,
     offset: number,
-    step?: AdminConfigControllerFindLlmCallsStepEnum,
+    step?: string,
     q?: string,
   ): Promise<AdminLlmCallPageResDto> {
     const api = new AdminConfigApi(getNestOpenAPIConfiguration());
     const res = await api.adminConfigControllerFindLlmCalls(limit, offset, step, q);
+    return res.data;
+  }
+
+  async fetchLlmCallSteps(): Promise<string[]> {
+    const api = new AdminConfigApi(getNestOpenAPIConfiguration());
+    const res = await api.adminConfigControllerFindLlmCallSteps();
     return res.data;
   }
 

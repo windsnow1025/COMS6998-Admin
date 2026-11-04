@@ -1,20 +1,20 @@
 import * as React from 'react';
 import Box from '@mui/material/Box';
-import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
-import {AdminChainResDto, AdminExampleResDto} from '@/client/nest';
+import {ChainResDto, AdminExampleResDto} from '@/client/nest';
 import AdminClient from '@/lib/admin/AdminClient';
 import CrudView from './CrudView';
 import {useToast} from './Toast';
+import VoiceName from './VoiceName';
 
 const MaxCaptionLength = 160;
 
-// Caption examples: a caption in a voice with the photo description it was written for, which the caption step
-// gets as a further example of the voice
+// Caption examples: a caption in a voice with the photo description it was written for, which a step of the voice's
+// chain gets where its prompt carries {examples}
 export default function ExamplesView() {
   const toast = useToast();
-  const [chains, setChains] = React.useState<AdminChainResDto[] | null>(null);
+  const [chains, setChains] = React.useState<ChainResDto[] | null>(null);
 
   React.useEffect(() => {
     let active = true;
@@ -49,12 +49,12 @@ export default function ExamplesView() {
   return (
     <CrudView<AdminExampleResDto>
       title="Caption examples"
-      description="Further examples given to the caption step."
+      description="Further examples a chain's step gets where its prompt carries {examples}."
       noun="example"
-      emptyText="No example yet. Each voice runs on the examples inside its own instruction."
-      deleteBody="The caption step stops seeing the example."
+      emptyText="No example yet."
+      deleteBody="No step sees the example after this."
       columns={[
-        {key: 'voice', label: 'Voice', render: (row) => <Chip size="small" color="primary" variant="outlined" label={row.flavor.name}/>},
+        {key: 'voice', label: 'Voice', render: (row) => <VoiceName name={row.flavor.name} color={row.flavor.color}/>},
         {
           key: 'description',
           label: 'Photo description',

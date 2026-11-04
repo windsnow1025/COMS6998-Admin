@@ -4,16 +4,16 @@ import {AdminTermResDto} from '@/client/nest';
 import AdminClient from '@/lib/admin/AdminClient';
 import CrudView from './CrudView';
 
-// The audience's vernacular, which the caption step may bring in where a photo calls for it
+// The audience's vernacular, which a chain's step gets where its prompt carries {terms}
 export default function TermsView() {
   const adminClient = new AdminClient();
   return (
     <CrudView<AdminTermResDto>
       title="Terms"
-      description="Vocabulary given to the caption step."
+      description="Words a chain's step gets where its prompt carries {terms}."
       noun="term"
-      emptyText="No term yet. The caption step runs without a vocabulary."
-      deleteBody="The caption step stops seeing the term."
+      emptyText="No term yet."
+      deleteBody="No step sees the term after this."
       columns={[
         {key: 'term', label: 'Term', render: (row) => row.term},
         {key: 'meaning', label: 'Meaning', render: (row) => row.meaning},
