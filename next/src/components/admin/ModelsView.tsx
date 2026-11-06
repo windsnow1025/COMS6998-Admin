@@ -4,6 +4,7 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
+import Collapse from '@mui/material/Collapse';
 import MenuItem from '@mui/material/MenuItem';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -12,35 +13,45 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import {AdminAvailableModelResDto, AdminModelResDto, AdminProviderResDto, AdminScreeningResDto} from '@/client/nest';
+import {
+  AdminAvailableModelResDto,
+  AdminModelResDto,
+  AdminPipelineStepResDto,
+  AdminPipelineStepResDtoStepEnum,
+  AdminProviderResDto,
+} from '@/client/nest';
 import AdminClient from '@/lib/admin/AdminClient';
 import CrudView from './CrudView';
+import ExpandButton from './ExpandButton';
 import {HoverSx} from './HoverSx';
+import PromptBlock from './PromptBlock';
 import {useToast} from './Toast';
 import VoiceName from './VoiceName';
 
-const MaxTemperature = 2;
+// What each of the product's own steps does
+const StepTasks: Record<AdminPipelineStepResDtoStepEnum, string> = {
+  [AdminPipelineStepResDtoStepEnum.Screen]: 'Passes or rejects an uploaded photo, and nothing else.',
+  [AdminPipelineStepResDtoStepEnum.Describe]: 'Describes a photo once, as the first step of every chain.',
+};
 
-// The screening's model and temperature, saved together
-function ScreeningRow({screening, models, onSaved}: {
-  screening: AdminScreeningResDto;
+// One of the product's own steps: its task, the model it runs on, and its prompts behind the chevron
+function PipelineStepRows({step, models, onSaved}: {
+  step: AdminPipelineStepResDto;
   models: AdminModelResDto[];
   onSaved: () => void;
 }) {
   const toast = useToast();
-  const [modelId, setModelId] = React.useState(screening.modelId);
-  const [temperature, setTemperature] = React.useState(String(screening.temperature));
+  const [modelId, setModelId] = React.useState(step.modelId);
   const [saving, setSaving] = React.useState(false);
-  const parsed = Number(temperature);
-  const valid = temperature.trim() !== '' && Number.isFinite(parsed) && parsed >= 0 && parsed <= MaxTemperature;
-  const changed = modelId !== screening.modelId || parsed !== screening.temperature;
+  const [open, setOpen] = React.useState(false);
+  const changed = modelId !== step.modelId;
 
   const save = async () => {
     setSaving(true);
     const adminClient = new AdminClient();
     try {
-      await adminClient.updateScreening({modelId, temperature: parsed});
-      toast.show('Screening updated.', 'success');
+      await adminClient.updatePipelineStep(step.step, {modelId});
+      toast.show('Step updated.', 'success');
       onSaved();
     } catch (error) {
       toast.show((error as Error).message, 'error');
@@ -49,52 +60,57 @@ function ScreeningRow({screening, models, onSaved}: {
   };
 
   return (
-    <TableRow>
-      <TableCell>
-        <Chip size="small" color="primary" variant="outlined" label={screening.step}/>
-      </TableCell>
-      <TableCell>
-        <TextField
-          select
-          size="small"
-          value={modelId}
-          onChange={(event) => setModelId(event.target.value)}
-          sx={{minWidth: 260}}
-          slotProps={{htmlInput: {'aria-label': 'Model of the screening'}}}
-        >
-          {models.map((model) => (
-            <MenuItem key={model.id} value={model.id} disabled={!model.enabled || !model.providerEnabled}>
-              {model.apiType} · {model.name}
-            </MenuItem>
-          ))}
-        </TextField>
-      </TableCell>
-      <TableCell>
-        <TextField
-          size="small"
-          type="number"
-          value={temperature}
-          onChange={(event) => setTemperature(event.target.value)}
-          error={!valid}
-          sx={{width: 110}}
-          slotProps={{htmlInput: {min: 0, max: MaxTemperature, step: 0.1, 'aria-label': 'Temperature of the screening'}}}
-        />
-      </TableCell>
-      <TableCell align="right">
-        {changed && (
-          <Button size="small" variant="contained" onClick={save} disabled={saving || !valid}>
-            {saving ? 'Saving…' : 'Save'}
-          </Button>
-        )}
-      </TableCell>
-    </TableRow>
+    <>
+      <TableRow>
+        <TableCell sx={{borderBottom: 0}}>
+          <Chip size="small" color="primary" variant="outlined" label={step.step}/>
+        </TableCell>
+        <TableCell sx={{borderBottom: 0}}>
+          <Typography variant="body2" color="text.secondary">{StepTasks[step.step]}</Typography>
+        </TableCell>
+        <TableCell sx={{borderBottom: 0}}>
+          <TextField
+            select
+            size="small"
+            value={modelId}
+            onChange={(event) => setModelId(event.target.value)}
+            sx={{minWidth: 260}}
+            slotProps={{htmlInput: {'aria-label': `Model of the ${step.step} step`}}}
+          >
+            {models.map((model) => (
+              <MenuItem key={model.id} value={model.id} disabled={!model.enabled || !model.providerEnabled}>
+                {model.apiType} · {model.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </TableCell>
+        <TableCell align="right" sx={{borderBottom: 0, whiteSpace: 'nowrap'}}>
+          {changed && (
+            <Button size="small" variant="contained" onClick={save} disabled={saving} sx={{mr: 1}}>
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+          )}
+          <ExpandButton open={open} label={`Prompts of the ${step.step} step`} onClick={() => setOpen(!open)}/>
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell colSpan={4} sx={{p: 0}}>
+          <Collapse in={open} unmountOnExit>
+            <Box className="flex-column" sx={{gap: 1.5, p: 2, pt: 0.5}}>
+              <PromptBlock label="System prompt" text={step.systemPrompt}/>
+              <PromptBlock label="User prompt" text={step.userPrompt}/>
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </>
   );
 }
 
-// The screening with the model and the temperature it runs on, and the providers and models a step can be set to
+// The product's own steps with the models they run on, and the providers and models a step can be set to
 export default function ModelsView() {
   const toast = useToast();
-  const [screening, setScreening] = React.useState<AdminScreeningResDto | null>(null);
+  const [pipelineSteps, setPipelineSteps] = React.useState<AdminPipelineStepResDto[] | null>(null);
   const [models, setModels] = React.useState<AdminModelResDto[] | null>(null);
   const [providers, setProviders] = React.useState<AdminProviderResDto[]>([]);
   const [available, setAvailable] = React.useState<AdminAvailableModelResDto[]>([]);
@@ -106,14 +122,14 @@ export default function ModelsView() {
     const load = async () => {
       const adminClient = new AdminClient();
       try {
-        const [fetchedScreening, fetchedModels, fetchedProviders, fetchedAvailable] = await Promise.all([
-          adminClient.fetchScreening(),
+        const [fetchedPipelineSteps, fetchedModels, fetchedProviders, fetchedAvailable] = await Promise.all([
+          adminClient.fetchPipelineSteps(),
           adminClient.fetchModels(),
           adminClient.fetchProviders(),
           adminClient.fetchAvailableModels(),
         ]);
         if (active) {
-          setScreening(fetchedScreening);
+          setPipelineSteps(fetchedPipelineSteps);
           setModels(fetchedModels);
           setProviders(fetchedProviders);
           setAvailable(fetchedAvailable);
@@ -139,12 +155,12 @@ export default function ModelsView() {
     <Box className="flex-column" sx={{gap: 3}}>
       <Card variant="outlined" sx={HoverSx}>
         <Box sx={{p: 2, pb: 1}}>
-          <Typography variant="subtitle1">Screening</Typography>
+          <Typography variant="subtitle1">Screening and description</Typography>
           <Typography variant="body2" color="text.secondary">
-            The model and the temperature the screening runs on. A change applies to the next photo.
+            The product&apos;s own steps on an uploaded photo, each on the model set here. A change applies to the next photo.
           </Typography>
         </Box>
-        {!screening || !models ? (
+        {!pipelineSteps || !models ? (
           <Box className="flex-center" sx={{minHeight: 120}}>
             <CircularProgress/>
           </Box>
@@ -153,13 +169,15 @@ export default function ModelsView() {
             <TableHead>
               <TableRow>
                 <TableCell>Step</TableCell>
+                <TableCell>Task</TableCell>
                 <TableCell>Model</TableCell>
-                <TableCell>Temperature</TableCell>
                 <TableCell align="right"/>
               </TableRow>
             </TableHead>
             <TableBody>
-              <ScreeningRow key={generation} screening={screening} models={models} onSaved={reload}/>
+              {pipelineSteps.map((step) => (
+                <PipelineStepRows key={`${step.step}-${generation}`} step={step} models={models} onSaved={reload}/>
+              ))}
             </TableBody>
           </Table>
         )}

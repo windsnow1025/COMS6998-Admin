@@ -11,8 +11,8 @@ import AdminClient from '@/lib/admin/AdminClient';
 import {formatInstant} from '@/lib/admin/Format';
 import {useToast} from './Toast';
 
-// One request to the LLM: its step, its voice, model, temperature, tokens, and time, and the 3 texts, the system prompt,
-// the user prompt, and the response
+// One request to the LLM: its step, its voice, model, tokens, and time, and the 3 texts, the system prompt, the user
+// prompt, and the response
 export default function LlmCallDialog({callId, onClose}: { callId: string | null; onClose: () => void }) {
   const toast = useToast();
   const [loaded, setLoaded] = React.useState<AdminLlmCallResDto | null>(null);
@@ -64,7 +64,6 @@ export default function LlmCallDialog({callId, onClose}: { callId: string | null
                 />
               )}
               <Chip size="small" label={call.model}/>
-              {call.temperature !== null && <Chip size="small" label={`temperature ${call.temperature}`}/>}
               <Chip size="small" label={`${call.inputTokens} in / ${call.outputTokens} out`}/>
               <Chip size="small" label={`${(call.durationMs / 1000).toFixed(1)}s`}/>
               <Chip size="small" label={formatInstant(call.createdAt)}/>

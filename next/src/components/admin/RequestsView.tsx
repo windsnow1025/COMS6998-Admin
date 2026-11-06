@@ -34,7 +34,7 @@ export default function RequestsView() {
   const [page, setPage] = React.useState<AdminLlmCallPageResDto | null>(null);
   const [pageIndex, setPageIndex] = React.useState(0);
   const [step, setStep] = React.useState(AllSteps);
-  // The screening and the chains' step names requests were made for
+  // The names of the product's own steps and of the chains' steps requests were made for
   const [steps, setSteps] = React.useState<string[]>([]);
   const [draft, setDraft] = React.useState('');
   const [q, setQ] = React.useState('');

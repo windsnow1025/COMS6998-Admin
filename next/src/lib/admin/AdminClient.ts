@@ -4,6 +4,7 @@ import {
   AdminApi,
   AdminAvailableModelResDto,
   AdminCaptionResDto,
+  AdminChainReqDto,
   AdminConfigApi,
   AdminDomainResDto,
   AdminEmailResDto,
@@ -18,13 +19,14 @@ import {
   AdminPhotoDetailResDto,
   AdminPhotoPageResDto,
   AdminPhotoReqDto,
+  AdminPipelineStepReqDto,
+  AdminPipelineStepResDto,
   AdminProviderReqDto,
   AdminProviderResDto,
   AdminProviderUpdateReqDto,
-  AdminScreeningReqDto,
-  AdminScreeningResDto,
   AdminTermReqDto,
   AdminTermResDto,
+  AdminUserReqDto,
   AdminUserResDto,
   AdminVotePageResDto,
   ChainResDto,
@@ -42,6 +44,12 @@ export default class AdminClient {
   async fetchUsers(): Promise<AdminUserResDto[]> {
     const api = new AdminApi(getNestOpenAPIConfiguration());
     const res = await api.adminControllerFindUsers();
+    return res.data;
+  }
+
+  async updateUser(id: number, body: AdminUserReqDto): Promise<AdminUserResDto> {
+    const api = new AdminApi(getNestOpenAPIConfiguration());
+    const res = await api.adminControllerUpdateUser(id, body);
     return res.data;
   }
 
@@ -111,21 +119,23 @@ export default class AdminClient {
     return res.data;
   }
 
-  async updateChain(slug: string, inMix: boolean): Promise<ChainResDto> {
+  // A voice's place in the mix, or its weight there
+  async updateChain(slug: string, body: AdminChainReqDto): Promise<ChainResDto> {
     const api = new AdminConfigApi(getNestOpenAPIConfiguration());
-    const res = await api.adminConfigControllerUpdateChain(slug, {inMix});
+    const res = await api.adminConfigControllerUpdateChain(slug, body);
     return res.data;
   }
 
-  async fetchScreening(): Promise<AdminScreeningResDto> {
+  // The product's own steps on a photo, the screening and the description
+  async fetchPipelineSteps(): Promise<AdminPipelineStepResDto[]> {
     const api = new AdminConfigApi(getNestOpenAPIConfiguration());
-    const res = await api.adminConfigControllerFindScreening();
+    const res = await api.adminConfigControllerFindPipelineSteps();
     return res.data;
   }
 
-  async updateScreening(body: AdminScreeningReqDto): Promise<AdminScreeningResDto> {
+  async updatePipelineStep(step: string, body: AdminPipelineStepReqDto): Promise<AdminPipelineStepResDto> {
     const api = new AdminConfigApi(getNestOpenAPIConfiguration());
-    const res = await api.adminConfigControllerUpdateScreening(body);
+    const res = await api.adminConfigControllerUpdatePipelineStep(step, body);
     return res.data;
   }
 
